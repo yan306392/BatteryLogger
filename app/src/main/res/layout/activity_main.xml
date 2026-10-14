@@ -1,32 +1,76 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="16dp">
+    android:background="#F5F5F5"
+    android:fillViewport="true">
 
-    <Button
-        android:id="@+id/btnStart"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="开始记录" />
+        android:orientation="vertical"
+        android:padding="20dp">
 
-    <Button
-        android:id="@+id/btnStop"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="停止记录" />
+        <!-- 标题 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="电池记录"
+            android:textSize="26sp"
+            android:textStyle="bold"
+            android:textColor="#212121"
+            android:layout_marginBottom="20dp" />
 
-    <Button
-        android:id="@+id/btnExport"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="导出 CSV" />
+        <!-- 状态卡片 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/card_bg"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:layout_marginBottom="24dp">
 
-    <TextView
-        android:id="@+id/statusText"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="就绪" />
-</LinearLayout>
+            <TextView
+                android:id="@+id/statusText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="就绪"
+                android:textSize="15sp"
+                android:textColor="#424242"
+                android:lineSpacingExtra="4dp" />
+        </LinearLayout>
+
+        <!-- 开始记录按钮 -->
+        <Button
+            android:id="@+id/btnStart"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="开始记录"
+            android:textSize="16sp"
+            android:textColor="#FFFFFF"
+            android:background="@drawable/button_start_bg"
+            android:layout_marginBottom="12dp" />
+
+        <!-- 停止记录按钮 -->
+        <Button
+            android:id="@+id/btnStop"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="停止记录"
+            android:textSize="16sp"
+            android:textColor="#212121"
+            android:background="@drawable/button_secondary_bg"
+            android:layout_marginBottom="12dp" />
+
+        <!-- 导出 CSV 按钮 -->
+        <Button
+            android:id="@+id/btnExport"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="导出 CSV"
+            android:textSize="16sp"
+            android:textColor="#212121"
+            android:background="@drawable/button_secondary_bg" />
+
+    </LinearLayout>
+</ScrollView>
