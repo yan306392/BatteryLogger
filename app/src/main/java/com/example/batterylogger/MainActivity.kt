@@ -42,7 +42,6 @@ class MainActivity : Activity() {
 
     private val serviceChecker = object : Runnable {
         override fun run() {
-            // 如果应用认为正在记录，但服务实际已经停止，则恢复按钮状态
             if (isRecording && !isServiceRunning(BatteryLogService::class.java)) {
                 isRecording = false
                 prefs.edit().putBoolean(KEY_IS_RECORDING, false).apply()
@@ -71,10 +70,8 @@ class MainActivity : Activity() {
         btnStop.setOnClickListener { stopRecording() }
         btnExport.setOnClickListener { exportCsv() }
 
-        // 打开应用立即请求通知权限（Android 13+）
+        // 打开应用立即请求通知权限并启动监控服务
         requestNotificationPermission()
-
-        // 打开应用立即启动监控服务，显示常驻通知与实时电压
         startMonitorService()
 
         updateButtonState()
@@ -130,7 +127,6 @@ class MainActivity : Activity() {
     }
 
     private fun requestPermissionsAndStart() {
-        // 通知权限已经在 onCreate 中请求，这里只处理电池优化
         val alreadyRequested = prefs.getBoolean(KEY_BATTERY_OPT_REQUESTED, false)
         if (!alreadyRequested && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             prefs.edit().putBoolean(KEY_BATTERY_OPT_REQUESTED, true).apply()
