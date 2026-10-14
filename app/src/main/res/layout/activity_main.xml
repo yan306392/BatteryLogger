@@ -2,7 +2,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F5F5F5"
+    android:background="#F2F2F7"
     android:fillViewport="true">
 
     <LinearLayout
@@ -15,42 +15,46 @@
         <Button
             android:id="@+id/btnStart"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
+            android:layout_height="52dp"
             android:text="开始记录"
-            android:textSize="16sp"
+            android:textSize="17sp"
+            android:textStyle="bold"
             android:textColor="#FFFFFF"
             android:background="@drawable/button_start_bg"
+            android:stateListAnimator="@null"
             android:layout_marginBottom="12dp" />
 
         <!-- 停止记录按钮 -->
         <Button
             android:id="@+id/btnStop"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
+            android:layout_height="52dp"
             android:text="停止记录"
-            android:textSize="16sp"
-            android:textColor="#212121"
+            android:textSize="17sp"
+            android:textColor="#007AFF"
             android:background="@drawable/button_secondary_bg"
+            android:stateListAnimator="@null"
             android:layout_marginBottom="12dp" />
 
         <!-- 导出 CSV 按钮 -->
         <Button
             android:id="@+id/btnExport"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
+            android:layout_height="52dp"
             android:text="导出 CSV"
-            android:textSize="16sp"
-            android:textColor="#212121"
+            android:textSize="17sp"
+            android:textColor="#007AFF"
             android:background="@drawable/button_secondary_bg"
+            android:stateListAnimator="@null"
             android:layout_marginBottom="24dp" />
 
-        <!-- 状态卡片（移到底部） -->
+        <!-- 状态卡片（底部） -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="@drawable/card_bg"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:padding="18dp">
 
             <TextView
                 android:id="@+id/statusText"
@@ -58,8 +62,8 @@
                 android:layout_height="wrap_content"
                 android:text="就绪"
                 android:textSize="15sp"
-                android:textColor="#424242"
-                android:lineSpacingExtra="4dp" />
+                android:textColor="#1C1C1E"
+                android:lineSpacingExtra="6dp" />
         </LinearLayout>
 
     </LinearLayout>
