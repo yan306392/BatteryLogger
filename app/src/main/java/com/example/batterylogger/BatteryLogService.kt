@@ -1,6 +1,7 @@
 package com.example.batterylogger
 
 import android.app.*
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -15,22 +16,60 @@ import java.util.*
 
 class BatteryLogService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private lateinit var csvFile: File
+    private var csvFile: File? = null
+    private var recordJob: Job? = null
+    private var lastLevel = -1
+    private var lastRecordTime = 0L
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+    private var batteryReceiver: BroadcastReceiver? = null
 
     override fun onCreate() {
         super.onCreate()
-        csvFile = File(getExternalFilesDir(null), "battery_log.csv")
-        if (!csvFile.exists()) {
-            csvFile.writeText("time,voltageMv,levelPercent\n")
-        }
         startForegroundWithNotification()
-        serviceScope.launch {
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val path = intent?.getStringExtra("csv_path")
+        if (path != null) {
+            csvFile = File(path)
+        }
+        val file = csvFile
+        if (file == null) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
+        if (!file.exists()) {
+            try {
+                file.writeText("time,Voltage,Battery level\n")
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+        registerBatteryReceiver()
+        recordJob?.cancel()
+        recordJob = serviceScope.launch {
             while (isActive) {
-                recordBattery()
+                recordBattery(force = true)
                 delay(10_000)
             }
         }
+        return START_STICKY
+    }
+
+    private fun registerBatteryReceiver() {
+        if (batteryReceiver != null) return
+        batteryReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+                val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+                val percent = if (level >= 0 && scale > 0) level * 100 / scale else -1
+                if (percent != lastLevel && percent != -1) {
+                    lastLevel = percent
+                    recordBattery(force = false)
+                }
+            }
+        }
+        registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
     }
 
     private fun startForegroundWithNotification() {
@@ -48,23 +87,33 @@ class BatteryLogService : Service() {
         startForeground(1, notification)
     }
 
-    private fun recordBattery() {
-        val intent = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-        val level = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
-        val scale = intent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
-        val voltage = intent?.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1) ?: -1
-        val percent = if (level >= 0 && scale > 0) level * 100 / scale else -1
-        val time = dateFormat.format(Date())
-        val line = "$time,$voltage,$percent\n"
-        csvFile.appendText(line)
-    }
+    private fun recordBattery(force: Boolean) {
+        val file = csvFile ?: return
+        val now = System.currentTimeMillis()
+        if (!force && now - lastRecordTime < 2000) return
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        return START_STICKY
+        try {
+            val intent = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            val level = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+            val scale = intent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
+            val voltage = intent?.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1) ?: -1
+            val percent = if (level >= 0 && scale > 0) level * 100 / scale else -1
+            val time = dateFormat.format(Date())
+            val line = "$time,$voltage,$percent\n"
+            file.appendText(line)
+            lastRecordTime = now
+            if (percent != -1) lastLevel = percent
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     override fun onDestroy() {
-        serviceScope.cancel()
+        recordJob?.cancel()
+        batteryReceiver?.let {
+            try { unregisterReceiver(it) } catch (e: Exception) { }
+        }
+        batteryReceiver = null
         super.onDestroy()
     }
 
