@@ -2,10 +2,11 @@
 <resources>
     <style name="AppTheme" parent="@android:style/Theme.Material.Light.DarkActionBar">
         <item name="android:colorPrimary">#FFFFFF</item>
-        <item name="android:colorPrimaryDark">#FFFFFF</item>
+        <item name="android:colorPrimaryDark">#F2F2F7</item>
         <item name="android:colorAccent">#007AFF</item>
         <item name="android:titleTextColor">#1C1C1E</item>
         <item name="android:windowBackground">#F2F2F7</item>
         <item name="android:textColorPrimary">#1C1C1E</item>
+        <item name="android:windowLightStatusBar">true</item>
     </style>
 </resources>
