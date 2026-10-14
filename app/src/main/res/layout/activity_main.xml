@@ -2,7 +2,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F2F2F7"
+    android:background="#000000"
     android:fillViewport="true">
 
     <LinearLayout
@@ -31,7 +31,7 @@
             android:layout_height="52dp"
             android:text="停止记录"
             android:textSize="17sp"
-            android:textColor="#007AFF"
+            android:textColor="#0A84FF"
             android:background="@drawable/button_secondary_bg"
             android:stateListAnimator="@null"
             android:layout_marginBottom="12dp" />
@@ -43,7 +43,7 @@
             android:layout_height="52dp"
             android:text="导出 CSV"
             android:textSize="17sp"
-            android:textColor="#007AFF"
+            android:textColor="#0A84FF"
             android:background="@drawable/button_secondary_bg"
             android:stateListAnimator="@null"
             android:layout_marginBottom="24dp" />
@@ -62,7 +62,7 @@
                 android:layout_height="wrap_content"
                 android:text="就绪"
                 android:textSize="15sp"
-                android:textColor="#1C1C1E"
+                android:textColor="#FFFFFF"
                 android:lineSpacingExtra="6dp" />
         </LinearLayout>
 
