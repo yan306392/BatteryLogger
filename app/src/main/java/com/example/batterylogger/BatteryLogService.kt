@@ -21,7 +21,7 @@ class BatteryLogService : Service() {
     private var recordJob: Job? = null
     private var monitorJob: Job? = null
     private var lastRecordTime = 0L
-    private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+    private val dateFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
     private var batteryReceiver: BroadcastReceiver? = null
     private var currentVoltage = -1
     private var currentLevel = -1
