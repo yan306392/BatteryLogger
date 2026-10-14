@@ -17,43 +17,92 @@ import java.util.*
 class BatteryLogService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var csvFile: File? = null
+    private var isRecording = false
     private var recordJob: Job? = null
+    private var monitorJob: Job? = null
     private var lastLevel = -1
     private var lastRecordTime = 0L
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
     private var batteryReceiver: BroadcastReceiver? = null
+    private var currentVoltage = -1
+    private var currentLevel = -1
+
+    companion object {
+        const val ACTION_START_MONITOR = "com.example.batterylogger.START_MONITOR"
+        const val ACTION_START_RECORD = "com.example.batterylogger.START_RECORD"
+        const val ACTION_STOP_RECORD = "com.example.batterylogger.STOP_RECORD"
+        private const val CHANNEL_ID = "battery_log_channel"
+        private const val NOTIFICATION_ID = 1
+    }
 
     override fun onCreate() {
         super.onCreate()
-        startForegroundWithNotification()
+        createNotificationChannel()
+        startForeground(NOTIFICATION_ID, buildNotification("电池监控", "正在获取电压..."))
+        registerBatteryReceiver()
+        startMonitor()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val path = intent?.getStringExtra("csv_path")
-        if (path != null) {
-            csvFile = File(path)
-        }
-        val file = csvFile
-        if (file == null) {
-            stopSelf()
-            return START_NOT_STICKY
-        }
-        if (!file.exists()) {
-            try {
-                file.writeText("time,Voltage,Battery level\n")
-            } catch (e: Exception) {
-                e.printStackTrace()
+        when (intent?.action) {
+            ACTION_START_MONITOR -> {
+                // 监控已在 onCreate 中启动
+            }
+            ACTION_START_RECORD -> {
+                val path = intent.getStringExtra("csv_path")
+                if (path != null) {
+                    csvFile = File(path)
+                    isRecording = true
+                    if (!csvFile!!.exists()) {
+                        try {
+                            csvFile!!.writeText("time,Voltage,Battery level\n")
+                        } catch (e: Exception) { e.printStackTrace() }
+                    }
+                    startRecordingLoop()
+                    updateNotification("记录中", "电压: ${currentVoltage}mV  电量: ${currentLevel}%")
+                }
+            }
+            ACTION_STOP_RECORD -> {
+                isRecording = false
+                recordJob?.cancel()
+                recordJob = null
+                updateNotification("电池监控", "电压: ${currentVoltage}mV  电量: ${currentLevel}%")
             }
         }
-        registerBatteryReceiver()
+        return START_STICKY
+    }
+
+    private fun startMonitor() {
+        monitorJob?.cancel()
+        monitorJob = serviceScope.launch {
+            while (isActive) {
+                updateBatteryInfo()
+                updateNotification(
+                    if (isRecording) "记录中" else "电池监控",
+                    "电压: ${currentVoltage}mV  电量: ${currentLevel}%"
+                )
+                delay(1000)
+            }
+        }
+    }
+
+    private fun startRecordingLoop() {
         recordJob?.cancel()
         recordJob = serviceScope.launch {
-            while (isActive) {
+            while (isActive && isRecording) {
                 recordBattery(force = true)
                 delay(10_000)
             }
         }
-        return START_STICKY
+    }
+
+    private fun updateBatteryInfo() {
+        val intent = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val level = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+        val scale = intent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
+        val voltage = intent?.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1) ?: -1
+        currentLevel = if (level >= 0 && scale > 0) level * 100 / scale else -1
+        currentVoltage = voltage
     }
 
     private fun registerBatteryReceiver() {
@@ -65,50 +114,53 @@ class BatteryLogService : Service() {
                 val percent = if (level >= 0 && scale > 0) level * 100 / scale else -1
                 if (percent != lastLevel && percent != -1) {
                     lastLevel = percent
-                    recordBattery(force = false)
+                    if (isRecording) recordBattery(force = false)
                 }
             }
         }
         registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
     }
 
-    private fun startForegroundWithNotification() {
-        val channelId = "battery_log_channel"
+    private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(channelId, "电池记录", NotificationManager.IMPORTANCE_LOW)
+            val channel = NotificationChannel(CHANNEL_ID, "电池记录", NotificationManager.IMPORTANCE_LOW)
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(channel)
         }
-        val notification = NotificationCompat.Builder(this, channelId)
-            .setContentTitle("电池记录中")
-            .setContentText("每10秒记录一次电池信息")
+    }
+
+    private fun buildNotification(title: String, content: String): Notification {
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle(title)
+            .setContentText(content)
             .setSmallIcon(android.R.drawable.ic_menu_info_details)
+            .setOngoing(true)
             .build()
-        startForeground(1, notification)
+    }
+
+    private fun updateNotification(title: String, content: String) {
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.notify(NOTIFICATION_ID, buildNotification(title, content))
     }
 
     private fun recordBattery(force: Boolean) {
+        if (!isRecording) return
         val file = csvFile ?: return
         val now = System.currentTimeMillis()
         if (!force && now - lastRecordTime < 2000) return
 
         try {
-            val intent = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-            val level = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
-            val scale = intent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
-            val voltage = intent?.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1) ?: -1
-            val percent = if (level >= 0 && scale > 0) level * 100 / scale else -1
+            updateBatteryInfo()
             val time = dateFormat.format(Date())
-            val line = "$time,$voltage,$percent\n"
+            val line = "$time,$currentVoltage,$currentLevel\n"
             file.appendText(line)
             lastRecordTime = now
-            if (percent != -1) lastLevel = percent
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+            if (currentLevel != -1) lastLevel = currentLevel
+        } catch (e: Exception) { e.printStackTrace() }
     }
 
     override fun onDestroy() {
+        monitorJob?.cancel()
         recordJob?.cancel()
         batteryReceiver?.let {
             try { unregisterReceiver(it) } catch (e: Exception) { }
