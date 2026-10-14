@@ -14,6 +14,11 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
+      - name: Download Gradle directly
+        run: |
+          wget -q https://services.gradle.org/distributions/gradle-8.7-bin.zip
+          unzip -q gradle-8.7-bin.zip -d /opt
+          echo "/opt/gradle-8.7/bin" >> $GITHUB_PATH
       - name: Build Debug APK
         run: gradle assembleDebug
       - name: Upload APK
