@@ -30,7 +30,7 @@ class MainActivity : Activity() {
         }
         findViewById<Button>(R.id.btnStop).setOnClickListener {
             stopService(Intent(this, BatteryLogService::class.java))
-            statusText.text = "已停止记录"
+            statusText.text = "已停止记录\nCSV 文件路径：\n${csvFile.absolutePath}"
         }
         findViewById<Button>(R.id.btnExport).setOnClickListener {
             exportCsv()
