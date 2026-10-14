@@ -1,7 +1,5 @@
 name: Build APK
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -14,7 +12,7 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-      - name: Download Gradle directly
+      - name: Download and Setup Gradle
         run: |
           wget -q https://services.gradle.org/distributions/gradle-8.7-bin.zip
           unzip -q gradle-8.7-bin.zip -d /opt
