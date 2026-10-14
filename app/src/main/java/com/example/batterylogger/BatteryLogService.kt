@@ -20,12 +20,12 @@ class BatteryLogService : Service() {
     private var isRecording = false
     private var recordJob: Job? = null
     private var monitorJob: Job? = null
-    private var lastLevel = -1
     private var lastRecordTime = 0L
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
     private var batteryReceiver: BroadcastReceiver? = null
     private var currentVoltage = -1
     private var currentLevel = -1
+    private var lastNotifiedLevel = -1
 
     companion object {
         const val ACTION_START_MONITOR = "com.example.batterylogger.START_MONITOR"
@@ -90,7 +90,7 @@ class BatteryLogService : Service() {
         recordJob?.cancel()
         recordJob = serviceScope.launch {
             while (isActive && isRecording) {
-                recordBattery(force = true)
+                writeLog(force = true)
                 delay(10_000)
             }
         }
@@ -112,9 +112,15 @@ class BatteryLogService : Service() {
                 val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
                 val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
                 val percent = if (level >= 0 && scale > 0) level * 100 / scale else -1
-                if (percent != lastLevel && percent != -1) {
-                    lastLevel = percent
-                    if (isRecording) recordBattery(force = false)
+                val voltage = intent.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1)
+
+                if (percent != -1) currentLevel = percent
+                if (voltage != -1) currentVoltage = voltage
+
+                // 只有电量变化时才额外记录，且非强制记录有2秒节流
+                if (isRecording && percent != -1 && percent != lastNotifiedLevel) {
+                    lastNotifiedLevel = percent
+                    writeLog(force = false, level = percent, voltage = voltage)
                 }
             }
         }
@@ -143,20 +149,20 @@ class BatteryLogService : Service() {
         manager.notify(NOTIFICATION_ID, buildNotification(title, content))
     }
 
-    private fun recordBattery(force: Boolean) {
+    private fun writeLog(force: Boolean, level: Int = currentLevel, voltage: Int = currentVoltage) {
         if (!isRecording) return
         val file = csvFile ?: return
         val now = System.currentTimeMillis()
         if (!force && now - lastRecordTime < 2000) return
 
         try {
-            updateBatteryInfo()
             val time = dateFormat.format(Date())
-            val line = "$time,$currentVoltage,$currentLevel\n"
+            val line = "$time,$voltage,$level\n"
             file.appendText(line)
             lastRecordTime = now
-            if (currentLevel != -1) lastLevel = currentLevel
-        } catch (e: Exception) { e.printStackTrace() }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     override fun onDestroy() {
