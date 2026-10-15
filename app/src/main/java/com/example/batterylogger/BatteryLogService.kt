@@ -33,6 +33,23 @@ class BatteryLogService : Service() {
         const val ACTION_STOP_RECORD = "com.example.batterylogger.STOP_RECORD"
         private const val CHANNEL_ID = "battery_log_channel"
         private const val NOTIFICATION_ID = 1
+
+        // 各芯片平台电压 sysfs 文件路径（按优先级排列）
+        private val VOLTAGE_PATHS = arrayOf(
+            // 高通 / 通用
+            "/sys/class/power_supply/battery/voltage_now",
+            "/sys/class/power_supply/battery/Voltage_Now",
+            // MTK
+            "/sys/class/power_supply/battery/batt_vol",
+            "/sys/class/power_supply/battery/Battery_Voltage_Now",
+            // 展讯
+            "/sys/class/power_supply/battery/voltage_avg",
+            "/sys/class/power_supply/sprd_battery/voltage_now",
+            // ASR
+            "/sys/class/power_supply/battery/batt_voltage",
+            // 其他
+            "/sys/class/power_supply/bms/voltage_now"
+        )
     }
 
     override fun onCreate() {
@@ -101,7 +118,30 @@ class BatteryLogService : Service() {
         val scale = intent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
         val voltage = intent?.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1) ?: -1
         currentLevel = if (level >= 0 && scale > 0) level * 100 / scale else -1
-        currentVoltage = voltage
+        // 标准 API 读到的电压有效就用，无效就尝试从 sysfs 读
+        currentVoltage = if (voltage > 0) voltage else readVoltageFromSysfs()
+    }
+
+    /**
+     * 从各芯片平台的 sysfs 文件读取电压（单位毫伏）
+     * 适用于标准 API 拿不到电压的展讯、ASR、部分低端芯片
+     */
+    private fun readVoltageFromSysfs(): Int {
+        for (path in VOLTAGE_PATHS) {
+            try {
+                val file = File(path)
+                if (!file.exists() || !file.canRead()) continue
+                val raw = file.readText().trim()
+                val value = raw.toLongOrNull() ?: continue
+                if (value <= 0) continue
+                // sysfs 中的电压通常是微伏，转为毫伏
+                // 如果数值小于 10000，说明已经是毫伏
+                return if (value > 10000) (value / 1000).toInt() else value.toInt()
+            } catch (e: Exception) {
+                // 忽略，继续尝试下一个路径
+            }
+        }
+        return -1
     }
 
     private fun registerBatteryReceiver() {
@@ -114,11 +154,11 @@ class BatteryLogService : Service() {
                 val voltage = intent.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1)
 
                 if (percent != -1) currentLevel = percent
-                if (voltage != -1) currentVoltage = voltage
+                if (voltage > 0) currentVoltage = voltage
 
                 if (isRecording && percent != -1 && percent != lastNotifiedLevel) {
                     lastNotifiedLevel = percent
-                    writeLog(force = false, level = percent, voltage = voltage)
+                    writeLog(force = false, level = percent, voltage = currentVoltage)
                 }
             }
         }
@@ -155,7 +195,9 @@ class BatteryLogService : Service() {
 
         try {
             val time = dateFormat.format(Date())
-            val line = "$time,$voltage,$level\n"
+            // 电压读不到时写 -1，方便事后分析哪些设备不支持
+            val finalVoltage = if (voltage > 0) voltage else readVoltageFromSysfs()
+            val line = "$time,$finalVoltage,$level\n"
             file.appendText(line)
             lastRecordTime = now
         } catch (e: Exception) {
