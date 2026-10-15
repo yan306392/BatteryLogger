@@ -45,9 +45,7 @@ class BatteryLogService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_START_MONITOR -> {
-                // 监控已在 onCreate 中启动
-            }
+            ACTION_START_MONITOR -> { }
             ACTION_START_RECORD -> {
                 val path = intent.getStringExtra("csv_path")
                 if (path != null) {
@@ -55,6 +53,7 @@ class BatteryLogService : Service() {
                     isRecording = true
                     if (!csvFile!!.exists()) {
                         try {
+                            csvFile!!.parentFile?.mkdirs()
                             csvFile!!.writeText("time,Voltage,Battery level\n")
                         } catch (e: Exception) { e.printStackTrace() }
                     }
@@ -117,7 +116,6 @@ class BatteryLogService : Service() {
                 if (percent != -1) currentLevel = percent
                 if (voltage != -1) currentVoltage = voltage
 
-                // 只有电量变化时才额外记录，且非强制记录有2秒节流
                 if (isRecording && percent != -1 && percent != lastNotifiedLevel) {
                     lastNotifiedLevel = percent
                     writeLog(force = false, level = percent, voltage = voltage)
