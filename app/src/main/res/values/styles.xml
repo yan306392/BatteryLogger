@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="AppTheme" parent="@android:style/Theme.Material">
-        <item name="android:colorPrimary">#1C1C1E</item>
-        <item name="android:colorPrimaryDark">#000000</item>
-        <item name="android:colorAccent">#0A84FF</item>
-        <item name="android:titleTextColor">#FFFFFF</item>
-        <item name="android:windowBackground">#000000</item>
-        <item name="android:textColorPrimary">#FFFFFF</item>
-        <item name="android:windowLightStatusBar">false</item>
+    <style name="AppTheme" parent="@android:style/Theme.Material.Light.DarkActionBar">
+        <item name="android:colorPrimary">#FFFFFF</item>
+        <item name="android:colorPrimaryDark">#F2F2F7</item>
+        <item name="android:colorAccent">#007AFF</item>
+        <item name="android:titleTextColor">#1C1C1E</item>
+        <item name="android:windowBackground">#F2F2F7</item>
+        <item name="android:textColorPrimary">#1C1C1E</item>
+        <item name="android:windowLightStatusBar">true</item>
     </style>
 </resources>
