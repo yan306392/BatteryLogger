@@ -7,12 +7,15 @@ android {
     namespace 'com.example.batterylogger'
     compileSdk 34
 
+    // 自动读取 GitHub Actions 的运行次数作为版本号，本地编译默认为 1
+    def buildNumber = System.getenv("GITHUB_RUN_NUMBER")?.toInteger() ?: 1
+
     defaultConfig {
         applicationId "com.example.batterylogger"
         minSdk 21
         targetSdk 34
-        versionCode 1
-        versionName "1.0"
+        versionCode buildNumber
+        versionName "1.0.${buildNumber}"
     }
 
     buildTypes {
