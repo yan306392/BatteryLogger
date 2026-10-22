@@ -64,6 +64,15 @@ class MainActivity : Activity() {
         btnStop = findViewById(R.id.btnStop)
         btnShare = findViewById(R.id.btnExport)
 
+        // 显示版本号
+        val tvVersion = findViewById<TextView>(R.id.tvVersion)
+        try {
+            val pInfo = packageManager.getPackageInfo(packageName, 0)
+            tvVersion.text = "Version ${pInfo.versionName}"
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
         val path = prefs.getString(KEY_CURRENT_FILE, null)
         if (path != null) csvFile = File(path)
 
@@ -74,7 +83,6 @@ class MainActivity : Activity() {
         requestNotificationPermission()
         startMonitorService()
 
-        // 核心修复：启动时检查真实状态，清除假死状态
         syncUiStateWithService()
     }
 
@@ -83,7 +91,6 @@ class MainActivity : Activity() {
         val serviceActuallyRunning = isServiceRunning(BatteryLogService::class.java)
 
         if (prefsRecording && !serviceActuallyRunning) {
-            // 假死状态：本地说在记录，但服务其实已经死了（比如自动关机）
             isRecording = false
             prefs.edit().putBoolean(KEY_IS_RECORDING, false).apply()
             statusText.text = "上次记录已结束（异常关机或系统清理）\n文件已保存：\nDownload/${csvFile?.name ?: ""}"
