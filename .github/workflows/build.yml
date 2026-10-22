@@ -1,5 +1,8 @@
 name: Build APK
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 jobs:
@@ -19,8 +22,12 @@ jobs:
           echo "/opt/gradle-8.7/bin" >> $GITHUB_PATH
       - name: Build Debug APK
         run: gradle assembleDebug
+      - name: Rename APK
+        run: |
+          mkdir -p output
+          cp app/build/outputs/apk/debug/app-debug.apk output/BatteryLogger-v1.0.${{ github.run_number }}.apk
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: BatteryLogger-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: BatteryLogger-v1.0.${{ github.run_number }}
+          path: output/BatteryLogger-v1.0.${{ github.run_number }}.apk
