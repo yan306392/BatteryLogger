@@ -2,7 +2,6 @@ package com.example.batterylogger
 
 import android.Manifest
 import android.app.Activity
-import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -29,7 +28,6 @@ class MainActivity : Activity() {
     private lateinit var btnShare: Button
     private var csvFile: File? = null
     private var isRecording = false
-    private val handler = Handler(Looper.getMainLooper())
     private lateinit var prefs: SharedPreferences
 
     companion object {
@@ -42,28 +40,14 @@ class MainActivity : Activity() {
         private const val STORAGE_PERMISSION_REQUEST = 102
     }
 
-    private val serviceChecker = object : Runnable {
-        override fun run() {
-            if (isRecording && !isServiceRunning(BatteryLogService::class.java)) {
-                isRecording = false
-                prefs.edit().putBoolean(KEY_IS_RECORDING, false).apply()
-                updateButtonState()
-                statusText.text = "记录已中断（服务被系统停止）\n上次文件：Download/${csvFile?.name ?: ""}"
-            }
-            handler.postDelayed(this, 2000)
-        }
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // 动态获取版本号并修改顶部标题栏
         try {
             val pInfo = packageManager.getPackageInfo(packageName, 0)
             actionBar?.title = "电池记录 v${pInfo.versionName}"
         } catch (e: Exception) {
-            e.printStackTrace()
             actionBar?.title = "电池记录"
         }
 
@@ -82,25 +66,19 @@ class MainActivity : Activity() {
 
         requestNotificationPermission()
         startMonitorService()
-
-        syncUiStateWithService()
     }
 
-    private fun syncUiStateWithService() {
-        val prefsRecording = prefs.getBoolean(KEY_IS_RECORDING, false)
-        val serviceActuallyRunning = isServiceRunning(BatteryLogService::class.java)
+    override fun onResume() {
+        super.onResume()
+        // 从配置中直接读取真实状态，Service 已保证重启或假死后状态必为 false
+        isRecording = prefs.getBoolean(KEY_IS_RECORDING, false)
+        val path = prefs.getString(KEY_CURRENT_FILE, null)
+        if (path != null) csvFile = File(path)
 
-        if (prefsRecording && !serviceActuallyRunning) {
-            isRecording = false
-            prefs.edit().putBoolean(KEY_IS_RECORDING, false).apply()
-            statusText.text = "上次记录已结束（异常关机或系统清理）\n文件已保存：\nDownload/${csvFile?.name ?: ""}"
+        if (isRecording && csvFile != null) {
+            statusText.text = "正在记录...\n文件：Download/${csvFile?.name}"
         } else {
-            isRecording = prefsRecording
-            if (isRecording && csvFile != null) {
-                statusText.text = "正在记录...\n文件：Download/${csvFile?.name}"
-            } else {
-                statusText.text = "就绪"
-            }
+            statusText.text = "就绪"
         }
         updateButtonState()
     }
@@ -116,17 +94,6 @@ class MainActivity : Activity() {
                 )
             }
         }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        syncUiStateWithService()
-        handler.post(serviceChecker)
-    }
-
-    override fun onPause() {
-        super.onPause()
-        handler.removeCallbacks(serviceChecker)
     }
 
     private fun startMonitorService() {
@@ -236,15 +203,6 @@ class MainActivity : Activity() {
         btnStop.isEnabled = isRecording
         btnStart.alpha = if (isRecording) 0.5f else 1.0f
         btnStop.alpha = if (isRecording) 1.0f else 0.5f
-    }
-
-    private fun isServiceRunning(serviceClass: Class<*>): Boolean {
-        val manager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        @Suppress("DEPRECATION")
-        for (service in manager.getRunningServices(Integer.MAX_VALUE)) {
-            if (serviceClass.name == service.service.className) return true
-        }
-        return false
     }
 
     private fun shareFile() {
