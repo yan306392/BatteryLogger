@@ -36,12 +36,12 @@
             android:stateListAnimator="@null"
             android:layout_marginBottom="8dp" />
 
-        <!-- 分享 CSV 按钮 -->
+        <!-- 分享 CSV 按钮（文字已修改） -->
         <Button
             android:id="@+id/btnExport"
             android:layout_width="match_parent"
             android:layout_height="48dp"
-            android:text="分享 CSV"
+            android:text="分享CSV文件"
             android:textSize="15sp"
             android:textColor="#007AFF"
             android:background="@drawable/button_secondary_bg"
