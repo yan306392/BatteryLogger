@@ -58,20 +58,20 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // 动态获取版本号并修改顶部标题栏
+        try {
+            val pInfo = packageManager.getPackageInfo(packageName, 0)
+            actionBar?.title = "电池记录 v${pInfo.versionName}"
+        } catch (e: Exception) {
+            e.printStackTrace()
+            actionBar?.title = "电池记录"
+        }
+
         prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
         statusText = findViewById(R.id.statusText)
         btnStart = findViewById(R.id.btnStart)
         btnStop = findViewById(R.id.btnStop)
         btnShare = findViewById(R.id.btnExport)
-
-        // 显示版本号
-        val tvVersion = findViewById<TextView>(R.id.tvVersion)
-        try {
-            val pInfo = packageManager.getPackageInfo(packageName, 0)
-            tvVersion.text = "Version ${pInfo.versionName}"
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
 
         val path = prefs.getString(KEY_CURRENT_FILE, null)
         if (path != null) csvFile = File(path)
