@@ -241,8 +241,10 @@ class MainActivity : Activity() {
         try {
             val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", file)
             val intent = Intent(Intent.ACTION_SEND).apply {
-                type = "text/csv"
+                // 核心修改：将 text/csv 改为 */*，让系统匹配所有接收器（包含蓝牙）
+                type = "*/*" 
                 putExtra(Intent.EXTRA_STREAM, uri)
+                putExtra(Intent.EXTRA_SUBJECT, "Battery Log")
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
             startActivity(Intent.createChooser(intent, "分享 CSV"))
