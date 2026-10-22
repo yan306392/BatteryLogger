@@ -9,44 +9,44 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:padding="12dp">
 
         <!-- 开始记录按钮 -->
         <Button
             android:id="@+id/btnStart"
             android:layout_width="match_parent"
-            android:layout_height="52dp"
+            android:layout_height="48dp"
             android:text="开始记录"
-            android:textSize="17sp"
+            android:textSize="15sp"
             android:textStyle="bold"
             android:textColor="#FFFFFF"
             android:background="@drawable/button_start_bg"
             android:stateListAnimator="@null"
-            android:layout_marginBottom="12dp" />
+            android:layout_marginBottom="8dp" />
 
         <!-- 停止记录按钮 -->
         <Button
             android:id="@+id/btnStop"
             android:layout_width="match_parent"
-            android:layout_height="52dp"
+            android:layout_height="48dp"
             android:text="停止记录"
-            android:textSize="17sp"
+            android:textSize="15sp"
             android:textColor="#007AFF"
             android:background="@drawable/button_secondary_bg"
             android:stateListAnimator="@null"
-            android:layout_marginBottom="12dp" />
+            android:layout_marginBottom="8dp" />
 
-        <!-- 导出 CSV 按钮 -->
+        <!-- 分享 CSV 按钮 -->
         <Button
             android:id="@+id/btnExport"
             android:layout_width="match_parent"
-            android:layout_height="52dp"
-            android:text="导出 CSV"
-            android:textSize="17sp"
+            android:layout_height="48dp"
+            android:text="分享 CSV"
+            android:textSize="15sp"
             android:textColor="#007AFF"
             android:background="@drawable/button_secondary_bg"
             android:stateListAnimator="@null"
-            android:layout_marginBottom="24dp" />
+            android:layout_marginBottom="16dp" />
 
         <!-- 状态卡片（底部） -->
         <LinearLayout
@@ -54,17 +54,28 @@
             android:layout_height="wrap_content"
             android:background="@drawable/card_bg"
             android:orientation="vertical"
-            android:padding="18dp">
+            android:padding="12dp">
 
             <TextView
                 android:id="@+id/statusText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="就绪"
-                android:textSize="15sp"
+                android:textSize="13sp"
                 android:textColor="#1C1C1E"
-                android:lineSpacingExtra="6dp" />
+                android:lineSpacingExtra="4dp" />
         </LinearLayout>
+
+        <!-- 版本号显示 -->
+        <TextView
+            android:id="@+id/tvVersion"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:gravity="center"
+            android:textColor="#999999"
+            android:textSize="12sp"
+            android:text="Version 1.0.1" />
 
     </LinearLayout>
 </ScrollView>
