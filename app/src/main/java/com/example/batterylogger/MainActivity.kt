@@ -71,15 +71,27 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        isRecording = prefs.getBoolean(KEY_IS_RECORDING, false)
-        val path = prefs.getString(KEY_CURRENT_FILE, null)
-        if (path != null) csvFile = File(path)
-
-        if (isRecording && csvFile != null) {
-            statusText.text = "正在记录...\n文件：Download/${csvFile?.name}"
+        
+        // 核心修复：结合本地配置和内存真实状态
+        val prefsRecording = prefs.getBoolean(KEY_IS_RECORDING, false)
+        
+        // 如果本地记着在录，但内存静态变量是 false（说明重启过或进程被杀过），强制清理假死
+        if (prefsRecording && !BatteryLogService.isServiceRecording) {
+            isRecording = false
+            prefs.edit().putBoolean(KEY_IS_RECORDING, false).apply()
+            statusText.text = "上次记录异常结束（手机重启或系统清理）\n文件已保存在 Download 目录"
         } else {
-            statusText.text = "就绪"
+            isRecording = prefsRecording
+            val path = prefs.getString(KEY_CURRENT_FILE, null)
+            if (path != null) csvFile = File(path)
+
+            if (isRecording && csvFile != null) {
+                statusText.text = "正在记录...\n文件：Download/${csvFile?.name}"
+            } else {
+                statusText.text = "就绪"
+            }
         }
+        
         updateButtonState()
     }
 
@@ -111,10 +123,7 @@ class MainActivity : Activity() {
         val counter = prefs.getInt(KEY_TEST_COUNTER, 0) + 1
         prefs.edit().putInt(KEY_TEST_COUNTER, counter).apply()
 
-        // 获取当前时间 (月日时分秒)，例如 1022153045
         val timeStamp = SimpleDateFormat("MMddHHmmss", Locale.getDefault()).format(Date())
-
-        // 拼接最终文件名：battery_时间_序号.csv
         val name = "battery_${timeStamp}_${counter}.csv"
 
         val downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
