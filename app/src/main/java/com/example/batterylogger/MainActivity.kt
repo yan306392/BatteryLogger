@@ -10,8 +10,6 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
-import android.os.Handler
-import android.os.Looper
 import android.provider.Settings
 import android.widget.Button
 import android.widget.TextView
@@ -20,6 +18,9 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class MainActivity : Activity() {
     private lateinit var statusText: TextView
@@ -70,7 +71,6 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        // 从配置中直接读取真实状态，Service 已保证重启或假死后状态必为 false
         isRecording = prefs.getBoolean(KEY_IS_RECORDING, false)
         val path = prefs.getString(KEY_CURRENT_FILE, null)
         if (path != null) csvFile = File(path)
@@ -110,7 +110,13 @@ class MainActivity : Activity() {
     private fun getNextLogFile(): File {
         val counter = prefs.getInt(KEY_TEST_COUNTER, 0) + 1
         prefs.edit().putInt(KEY_TEST_COUNTER, counter).apply()
-        val name = "battery_log_$counter.csv"
+
+        // 获取当前时间 (月日时分秒)，例如 1022153045
+        val timeStamp = SimpleDateFormat("MMddHHmmss", Locale.getDefault()).format(Date())
+
+        // 拼接最终文件名：battery_时间_序号.csv
+        val name = "battery_${timeStamp}_${counter}.csv"
+
         val downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
         if (!downloadDir.exists()) {
             downloadDir.mkdirs()
