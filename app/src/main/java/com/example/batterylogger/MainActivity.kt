@@ -31,7 +31,6 @@ class MainActivity : Activity() {
     private var isRecording = false
     private lateinit var prefs: SharedPreferences
     
-    // 核心新增：用来标记是否显示异常提示
     private var showAbnormalMessage = false
 
     companion object {
@@ -77,21 +76,18 @@ class MainActivity : Activity() {
         
         val prefsRecording = prefs.getBoolean(KEY_IS_RECORDING, false)
         
-        // 如果发现本地记着在录，但内存中服务没在录（说明重启或被杀）
         if (prefsRecording && !BatteryLogService.isServiceRecording) {
             isRecording = false
-            showAbnormalMessage = true // 标记需要显示异常提示
+            showAbnormalMessage = true
             prefs.edit().putBoolean(KEY_IS_RECORDING, false).apply()
         }
 
-        // 如果触发了异常提示，就强制显示，并且不再往下执行覆盖逻辑
         if (showAbnormalMessage) {
             statusText.text = "上次记录异常结束（手机重启或系统清理）\n文件已保存在 Download 目录"
             updateButtonState()
             return 
         }
 
-        // 正常的刷新逻辑
         isRecording = prefsRecording
         val path = prefs.getString(KEY_CURRENT_FILE, null)
         if (path != null) csvFile = File(path)
@@ -192,7 +188,7 @@ class MainActivity : Activity() {
     }
 
     private fun startRecording() {
-        showAbnormalMessage = false // 用户点击了开始记录，清除异常提示
+        showAbnormalMessage = false
         
         val newFile = getNextLogFile()
         csvFile = newFile
@@ -241,13 +237,15 @@ class MainActivity : Activity() {
         try {
             val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", file)
             val intent = Intent(Intent.ACTION_SEND).apply {
-                // 核心修改：将 text/csv 改为 */*，让系统匹配所有接收器（包含蓝牙）
                 type = "*/*" 
                 putExtra(Intent.EXTRA_STREAM, uri)
-                putExtra(Intent.EXTRA_SUBJECT, "Battery Log")
+                // 传递文件名作为标题，有助于某些应用（如邮件）自动填充主题
+                putExtra(Intent.EXTRA_SUBJECT, file.name)
+                // 传递一些文本内容，有助于某些应用识别
+                putExtra(Intent.EXTRA_TEXT, "Battery Log File: ${file.name}")
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            startActivity(Intent.createChooser(intent, "分享 CSV"))
+            startActivity(Intent.createChooser(intent, "分享CSV文件"))
         } catch (e: Exception) {
             Toast.makeText(this, "分享失败：${e.message}", Toast.LENGTH_LONG).show()
         }
