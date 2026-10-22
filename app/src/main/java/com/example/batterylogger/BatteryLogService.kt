@@ -36,6 +36,9 @@ class BatteryLogService : Service() {
         private const val PREFS_NAME = "battery_logger_prefs"
         private const val KEY_IS_RECORDING = "is_recording"
 
+        // 核心开关：只在内存中有效，手机重启或进程被杀必然重置为 false
+        var isServiceRecording = false
+
         private val VOLTAGE_PATHS = arrayOf(
             "/sys/class/power_supply/battery/voltage_now",
             "/sys/class/power_supply/battery/Voltage_Now",
@@ -50,10 +53,6 @@ class BatteryLogService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        // 核心修复：服务只要被重新创建，说明之前的记录必定已中断，强制重置状态
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putBoolean(KEY_IS_RECORDING, false).apply()
-
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, buildNotification("电池监控", "正在获取电压..."))
         registerBatteryReceiver()
@@ -70,6 +69,7 @@ class BatteryLogService : Service() {
                 if (path != null) {
                     csvFile = File(path)
                     isRecording = true
+                    isServiceRecording = true // 更新静态变量
                     prefs.edit().putBoolean(KEY_IS_RECORDING, true).apply()
                     
                     if (!csvFile!!.exists()) {
@@ -84,6 +84,7 @@ class BatteryLogService : Service() {
             }
             ACTION_STOP_RECORD -> {
                 isRecording = false
+                isServiceRecording = false // 更新静态变量
                 prefs.edit().putBoolean(KEY_IS_RECORDING, false).apply()
                 recordJob?.cancel()
                 recordJob = null
@@ -201,6 +202,7 @@ class BatteryLogService : Service() {
     }
 
     override fun onDestroy() {
+        isServiceRecording = false // 服务销毁时，重置内存状态
         monitorJob?.cancel()
         recordJob?.cancel()
         batteryReceiver?.let {
