@@ -48,7 +48,7 @@ class MainActivity : Activity() {
                 isRecording = false
                 prefs.edit().putBoolean(KEY_IS_RECORDING, false).apply()
                 updateButtonState()
-                statusText.text = "记录已中断（服务被系统停止）"
+                statusText.text = "记录已中断（服务被系统停止）\n上次文件：Download/${csvFile?.name ?: ""}"
             }
             handler.postDelayed(this, 2000)
         }
@@ -64,7 +64,6 @@ class MainActivity : Activity() {
         btnStop = findViewById(R.id.btnStop)
         btnShare = findViewById(R.id.btnExport)
 
-        isRecording = prefs.getBoolean(KEY_IS_RECORDING, false)
         val path = prefs.getString(KEY_CURRENT_FILE, null)
         if (path != null) csvFile = File(path)
 
@@ -75,12 +74,28 @@ class MainActivity : Activity() {
         requestNotificationPermission()
         startMonitorService()
 
-        updateButtonState()
-        if (isRecording && csvFile != null) {
-            statusText.text = "正在记录...\n文件：Download/${csvFile?.name}"
+        // 核心修复：启动时检查真实状态，清除假死状态
+        syncUiStateWithService()
+    }
+
+    private fun syncUiStateWithService() {
+        val prefsRecording = prefs.getBoolean(KEY_IS_RECORDING, false)
+        val serviceActuallyRunning = isServiceRunning(BatteryLogService::class.java)
+
+        if (prefsRecording && !serviceActuallyRunning) {
+            // 假死状态：本地说在记录，但服务其实已经死了（比如自动关机）
+            isRecording = false
+            prefs.edit().putBoolean(KEY_IS_RECORDING, false).apply()
+            statusText.text = "上次记录已结束（异常关机或系统清理）\n文件已保存：\nDownload/${csvFile?.name ?: ""}"
         } else {
-            statusText.text = "就绪"
+            isRecording = prefsRecording
+            if (isRecording && csvFile != null) {
+                statusText.text = "正在记录...\n文件：Download/${csvFile?.name}"
+            } else {
+                statusText.text = "就绪"
+            }
         }
+        updateButtonState()
     }
 
     private fun requestNotificationPermission() {
@@ -98,10 +113,7 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        isRecording = prefs.getBoolean(KEY_IS_RECORDING, false)
-        val path = prefs.getString(KEY_CURRENT_FILE, null)
-        if (path != null) csvFile = File(path)
-        updateButtonState()
+        syncUiStateWithService()
         handler.post(serviceChecker)
     }
 
