@@ -30,6 +30,9 @@ class MainActivity : Activity() {
     private var csvFile: File? = null
     private var isRecording = false
     private lateinit var prefs: SharedPreferences
+    
+    // 核心新增：用来标记是否显示异常提示
+    private var showAbnormalMessage = false
 
     companion object {
         private const val PREFS_NAME = "battery_logger_prefs"
@@ -72,24 +75,31 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         
-        // 核心修复：结合本地配置和内存真实状态
         val prefsRecording = prefs.getBoolean(KEY_IS_RECORDING, false)
         
-        // 如果本地记着在录，但内存静态变量是 false（说明重启过或进程被杀过），强制清理假死
+        // 如果发现本地记着在录，但内存中服务没在录（说明重启或被杀）
         if (prefsRecording && !BatteryLogService.isServiceRecording) {
             isRecording = false
+            showAbnormalMessage = true // 标记需要显示异常提示
             prefs.edit().putBoolean(KEY_IS_RECORDING, false).apply()
-            statusText.text = "上次记录异常结束（手机重启或系统清理）\n文件已保存在 Download 目录"
-        } else {
-            isRecording = prefsRecording
-            val path = prefs.getString(KEY_CURRENT_FILE, null)
-            if (path != null) csvFile = File(path)
+        }
 
-            if (isRecording && csvFile != null) {
-                statusText.text = "正在记录...\n文件：Download/${csvFile?.name}"
-            } else {
-                statusText.text = "就绪"
-            }
+        // 如果触发了异常提示，就强制显示，并且不再往下执行覆盖逻辑
+        if (showAbnormalMessage) {
+            statusText.text = "上次记录异常结束（手机重启或系统清理）\n文件已保存在 Download 目录"
+            updateButtonState()
+            return 
+        }
+
+        // 正常的刷新逻辑
+        isRecording = prefsRecording
+        val path = prefs.getString(KEY_CURRENT_FILE, null)
+        if (path != null) csvFile = File(path)
+
+        if (isRecording && csvFile != null) {
+            statusText.text = "正在记录...\n文件：Download/${csvFile?.name}"
+        } else {
+            statusText.text = "就绪"
         }
         
         updateButtonState()
@@ -182,6 +192,8 @@ class MainActivity : Activity() {
     }
 
     private fun startRecording() {
+        showAbnormalMessage = false // 用户点击了开始记录，清除异常提示
+        
         val newFile = getNextLogFile()
         csvFile = newFile
         isRecording = true
