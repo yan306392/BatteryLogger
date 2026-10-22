@@ -33,27 +33,27 @@ class BatteryLogService : Service() {
         const val ACTION_STOP_RECORD = "com.example.batterylogger.STOP_RECORD"
         private const val CHANNEL_ID = "battery_log_channel"
         private const val NOTIFICATION_ID = 1
+        private const val PREFS_NAME = "battery_logger_prefs"
+        private const val KEY_IS_RECORDING = "is_recording"
 
-        // 各芯片平台电压 sysfs 文件路径（按优先级排列）
         private val VOLTAGE_PATHS = arrayOf(
-            // 高通 / 通用
             "/sys/class/power_supply/battery/voltage_now",
             "/sys/class/power_supply/battery/Voltage_Now",
-            // MTK
             "/sys/class/power_supply/battery/batt_vol",
             "/sys/class/power_supply/battery/Battery_Voltage_Now",
-            // 展讯
             "/sys/class/power_supply/battery/voltage_avg",
             "/sys/class/power_supply/sprd_battery/voltage_now",
-            // ASR
             "/sys/class/power_supply/battery/batt_voltage",
-            // 其他
             "/sys/class/power_supply/bms/voltage_now"
         )
     }
 
     override fun onCreate() {
         super.onCreate()
+        // 核心修复：服务只要被重新创建，说明之前的记录必定已中断，强制重置状态
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean(KEY_IS_RECORDING, false).apply()
+
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, buildNotification("电池监控", "正在获取电压..."))
         registerBatteryReceiver()
@@ -61,6 +61,8 @@ class BatteryLogService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
         when (intent?.action) {
             ACTION_START_MONITOR -> { }
             ACTION_START_RECORD -> {
@@ -68,6 +70,8 @@ class BatteryLogService : Service() {
                 if (path != null) {
                     csvFile = File(path)
                     isRecording = true
+                    prefs.edit().putBoolean(KEY_IS_RECORDING, true).apply()
+                    
                     if (!csvFile!!.exists()) {
                         try {
                             csvFile!!.parentFile?.mkdirs()
@@ -80,6 +84,7 @@ class BatteryLogService : Service() {
             }
             ACTION_STOP_RECORD -> {
                 isRecording = false
+                prefs.edit().putBoolean(KEY_IS_RECORDING, false).apply()
                 recordJob?.cancel()
                 recordJob = null
                 updateNotification("电池监控", "电压: ${currentVoltage}mV  电量: ${currentLevel}%")
@@ -118,14 +123,9 @@ class BatteryLogService : Service() {
         val scale = intent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
         val voltage = intent?.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1) ?: -1
         currentLevel = if (level >= 0 && scale > 0) level * 100 / scale else -1
-        // 标准 API 读到的电压有效就用，无效就尝试从 sysfs 读
         currentVoltage = if (voltage > 0) voltage else readVoltageFromSysfs()
     }
 
-    /**
-     * 从各芯片平台的 sysfs 文件读取电压（单位毫伏）
-     * 适用于标准 API 拿不到电压的展讯、ASR、部分低端芯片
-     */
     private fun readVoltageFromSysfs(): Int {
         for (path in VOLTAGE_PATHS) {
             try {
@@ -134,12 +134,8 @@ class BatteryLogService : Service() {
                 val raw = file.readText().trim()
                 val value = raw.toLongOrNull() ?: continue
                 if (value <= 0) continue
-                // sysfs 中的电压通常是微伏，转为毫伏
-                // 如果数值小于 10000，说明已经是毫伏
                 return if (value > 10000) (value / 1000).toInt() else value.toInt()
-            } catch (e: Exception) {
-                // 忽略，继续尝试下一个路径
-            }
+            } catch (e: Exception) { }
         }
         return -1
     }
@@ -195,7 +191,6 @@ class BatteryLogService : Service() {
 
         try {
             val time = dateFormat.format(Date())
-            // 电压读不到时写 -1，方便事后分析哪些设备不支持
             val finalVoltage = if (voltage > 0) voltage else readVoltageFromSysfs()
             val line = "$time,$finalVoltage,$level\n"
             file.appendText(line)
