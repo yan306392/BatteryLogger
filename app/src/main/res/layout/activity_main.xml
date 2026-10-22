@@ -66,16 +66,5 @@
                 android:lineSpacingExtra="4dp" />
         </LinearLayout>
 
-        <!-- 版本号显示 -->
-        <TextView
-            android:id="@+id/tvVersion"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:gravity="center"
-            android:textColor="#999999"
-            android:textSize="12sp"
-            android:text="Version 1.0.1" />
-
     </LinearLayout>
 </ScrollView>
